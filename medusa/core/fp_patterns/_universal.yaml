@@ -96,10 +96,11 @@ patterns:
   description: Java/Rust target/ build output is not source
 - name: generated_code_marker
   pattern: '.*'
+  file_pattern_negate: '(gradle\.lockfile|buildscript-gradle\.lockfile)$'
   context_pattern: '(Code generated.*DO NOT EDIT|@generated|@auto-generated|DO NOT EDIT|DO NOT MODIFY|GENERATED FILE|AUTO[ -]?GENERATED|THIS FILE IS GENERATED)'
   reason: GENERATED_CODE
   confidence: 0.92
-  description: File contains auto-generation marker - fix the generator, not the output
+  description: File contains auto-generation marker - fix the generator, not the output (excludes Gradle lockfiles whose banner contains GENERATED FILE but carry real CVE findings)
 - name: generated_code_protobuf
   pattern: '.*'
   file_pattern: '\.(pb|pb2)\.go$|_pb2\.py$|_pb\.ts$|\.pb\.h$'
@@ -1117,10 +1118,10 @@ patterns:
   description: Base64 encoding in LLM framework data processing code
 - name: findings_in_json_data_files
   pattern: '.'
-  file_pattern: '\.json$'
+  file_pattern: '(?i)^(?!.*/lab[-_][^/]*\.json$)(?!lab[-_][^/]*\.json$).+\.json$'
   reason: GENERATED_CODE
   confidence: 0.85
-  description: JSON data files contain data that matches security patterns but aren't exploitable code
+  description: JSON data files contain data that matches security patterns but aren't exploitable code (excludes lab-*/lab_* JSON security-training samples)
 - name: sensitive_data_in_json_key_names
   pattern: 'Potential sensitive data in key'
   reason: KNOWN_PATTERN

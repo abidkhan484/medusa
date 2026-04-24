@@ -10,10 +10,83 @@ import json
 import re
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from collections import defaultdict
 
 from medusa import __version__
+from medusa.core.taxonomy_names import mitre_atlas_display_name, owasp_llm_display_name
+
+# MITRE ATLAS technique pages (https://atlas.mitre.org/)
+_ATLAS_BASE = "https://atlas.mitre.org/techniques"
+
+
+def _mitre_atlas_url(mitre_atlas: str) -> str:
+    """Return URL for the first technique ID if comma-separated."""
+    tid = mitre_atlas.split(",")[0].strip()
+    return f"{_ATLAS_BASE}/{tid}"
+
+
+_ATLAS_TECHNIQUE_ID_RE = re.compile(r"\bAML\.T\d{4}(?:\.\d{3})?\b")
+
+
+def _extract_atlas_technique_ids(finding: Dict[str, Any]) -> List[str]:
+    """Collect AML.T#### IDs from mitre_atlas field and/or issue and code text."""
+    seen: set = set()
+    out: List[str] = []
+
+    def add(tid: str) -> None:
+        tid = tid.strip()
+        if not tid or tid in seen:
+            return
+        seen.add(tid)
+        out.append(tid)
+
+    ma = finding.get("mitre_atlas")
+    if ma:
+        for part in str(ma).split(","):
+            add(part)
+    blob = f"{finding.get('issue', '')} {finding.get('code', '')}"
+    for m in _ATLAS_TECHNIQUE_ID_RE.finditer(blob):
+        add(m.group(0))
+    return out
+
+
+_OWASP_LLM_HUB_URL = "https://genai.owasp.org/llm-top-10/"
+_OWASP_LLM_CATEGORY_RE = re.compile(r"\bLLM(?:0[1-9]|10):\d{4}\b", re.IGNORECASE)
+
+
+def _owasp_llm_hub_url(category_id: str) -> str:
+    """Link to the OWASP Gen AI LLM Top 10 hub."""
+    tid = category_id.split(",")[0].strip()
+    m = re.match(r"LLM(\d{1,2}):", tid, re.IGNORECASE)
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 10:
+            return f"{_OWASP_LLM_HUB_URL}#llm{n:02d}"
+    return _OWASP_LLM_HUB_URL
+
+
+def _extract_owasp_llm_categories(finding: Dict[str, Any]) -> List[str]:
+    """Collect LLM01:2025-style IDs from owasp_llm field and/or issue/code text."""
+    seen: set = set()
+    out: List[str] = []
+
+    def add(cat: str) -> None:
+        cat = cat.strip()
+        if not cat or cat in seen:
+            return
+        seen.add(cat)
+        out.append(cat)
+
+    ol = finding.get("owasp_llm")
+    if ol:
+        for part in str(ol).split(","):
+            add(part)
+    blob = f"{finding.get('issue', '')} {finding.get('code', '')}"
+    for m in _OWASP_LLM_CATEGORY_RE.finditer(blob):
+        add(m.group(0))
+    return out
+
 
 # Pre-compiled regex patterns for SARIF rule ID sanitisation (used per-finding)
 _SARIF_RULE_ID_SANITIZE = re.compile(r'[^a-zA-Z0-9-]')
