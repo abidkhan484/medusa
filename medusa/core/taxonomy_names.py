@@ -52,8 +52,8 @@ def owasp_llm_display_name(category_id: str) -> str:
 
 
 def mitre_atlas_display_name(technique_id: str) -> str:
-    """Return display name for a MITRE ATLAS technique id, or empty string if unknown."""
+    """Return display name for a MITRE ATLAS technique id, or the id itself if unmapped."""
     if not technique_id:
         return ""
     base = technique_id.split(",")[0].strip()
-    return MITRE_ATLAS_TECHNIQUE_NAMES.get(base, "")
+    return MITRE_ATLAS_TECHNIQUE_NAMES.get(base, f"ATLAS:{base}")
